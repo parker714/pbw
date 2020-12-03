@@ -1,51 +1,93 @@
 package pbw
 
 import (
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 )
 
-func TestEngine_ServeHTTP(t *testing.T) {
-	t.Run("HTTP 200 router", func(t *testing.T) {
-		request := httptest.NewRequest(http.MethodGet, "/user", nil)
-		response := httptest.NewRecorder()
-
-		engine := New()
-		engine.GET("/user", func(c *Context) {
-			_, _ = fmt.Fprint(c.Writer, "pb")
-		})
-		engine.POST("/user", func(c *Context) {})
-		engine.ServeHTTP(response, request)
-
-		if http.StatusOK != response.Code {
-			t.Fatalf("http code err, got %d, want %d", response.Code, http.StatusOK)
-		}
-		if "pb" != response.Body.String() {
-			t.Fatalf("http body err, got %s, want %s", response.Body.String(), "pb")
-		}
-	})
-
-	t.Run("HTTP 404 router", func(t *testing.T) {
-		request := httptest.NewRequest(http.MethodGet, "/user1", nil)
-		response := httptest.NewRecorder()
-
-		engine := New()
-		engine.GET("/user", func(c *Context) {})
-		engine.ServeHTTP(response, request)
-
-		want := "404 NOT FOUND: /user1\n"
-		if want != response.Body.String() {
-			t.Fatalf("http body err, got %s, want %s", response.Body.String(), want)
-		}
-	})
-}
-
 func TestEngine_Run(t *testing.T) {
 	engine := New()
 	err := engine.Run("80000")
 	if err == nil {
-		t.Fatalf("engine run err, got %s, want not nil", err)
+		t.Fatalf("expect nil, got %s", err)
 	}
+}
+
+func TestEngine_GET(t *testing.T) {
+	engine := New()
+	engine.GET("/user", func(c Context) {
+		c.Data(http.StatusOK, []byte("pb"))
+	})
+	response := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodGet, "/user", nil)
+	engine.ServeHTTP(response, request)
+
+	if "pb" != response.Body.String() {
+		t.Fatalf("expect %s, got %s", "pb", response.Body.String())
+	}
+}
+
+func TestEngine_POST(t *testing.T) {
+	engine := New()
+	engine.POST("/user", func(c Context) {
+		c.Data(http.StatusOK, []byte("pb"))
+	})
+	response := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodPost, "/user", nil)
+	engine.ServeHTTP(response, request)
+
+	if "pb" != response.Body.String() {
+		t.Fatalf("expect %s, got %s", "pb", response.Body.String())
+	}
+}
+
+func TestContext_SetHeader(t *testing.T) {
+	engine := New()
+	engine.GET("/user", func(c Context) {
+		c.SetHeader("token", "pb-token")
+		c.Data(http.StatusOK, []byte("pb"))
+	})
+	response := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodGet, "/user", nil)
+	engine.ServeHTTP(response, request)
+
+	if "pb-token" != response.Header().Get("token") {
+		t.Fatalf("expect %s, got %s", "pb-token", response.Header().Get("token"))
+	}
+	if "pb" != response.Body.String() {
+		t.Fatalf("expect %s, got %s", "pb", response.Body.String())
+	}
+}
+
+func TestContext_JSON(t *testing.T) {
+	engine := New()
+	engine.GET("/user", func(c Context) {
+		c.JSON(http.StatusOK, H{"name": "pb"})
+	})
+	response := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodGet, "/user", nil)
+	engine.ServeHTTP(response, request)
+
+	if response.Body.String() != `{"name":"pb"}` {
+		t.Fatalf("expect %s, got %s", `{"name":"pb"}`, response.Body.String())
+	}
+}
+
+func TestContext_JSON_Panic(t *testing.T) {
+	t.Run("json marshal err", func(t *testing.T) {
+		defer func() {
+			if err := recover(); err == nil {
+				t.Fatalf("expect %s, got nil", "exception")
+			}
+		}()
+
+		engine := New()
+		engine.GET("/user", func(c Context) {
+			c.JSON(http.StatusOK, make(chan int))
+		})
+		response := httptest.NewRecorder()
+		request := httptest.NewRequest(http.MethodGet, "/user", nil)
+		engine.ServeHTTP(response, request)
+	})
 }

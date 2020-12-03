@@ -5,63 +5,84 @@ import (
 	"net/http"
 )
 
-type Context struct {
-	Writer http.ResponseWriter
-	Req    *http.Request
+type H map[string]interface{}
 
-	Path       string
-	Method     string
-	StatusCode int
+type Context interface {
+	Method() string
+	Path() string
+	Query(key string) string
+	SetParam(key, value string)
+	Param(key string) string
+	PostForm(key string) string
+	SetStatusCode(statusCode int)
+	SetHeader(key string, value string)
+	Data(code int, data []byte)
+	JSON(code int, obj interface{})
 }
 
-func newContext(w http.ResponseWriter, req *http.Request) *Context {
-	return &Context{
-		Writer: w,
-		Req:    req,
-		Path:   req.URL.Path,
-		Method: req.Method,
+type context struct {
+	writer http.ResponseWriter
+	req    *http.Request
+
+	// request uri params
+	params map[string]string
+}
+
+func NewContext(w http.ResponseWriter, req *http.Request) Context {
+	return &context{
+		writer: w,
+		req:    req,
+		params: make(map[string]string),
 	}
 }
 
-func (c *Context) PostForm(key string) string {
-	return c.Req.FormValue(key)
+func (c *context) Method() string {
+	return c.req.Method
 }
 
-func (c *Context) Query(key string) string {
-	return c.Req.URL.Query().Get(key)
+func (c *context) Path() string {
+	return c.req.URL.Path
 }
 
-func (c *Context) SetHeader(key string, value string) {
-	c.Writer.Header().Set(key, value)
+func (c *context) Query(key string) string {
+	return c.req.URL.Query().Get(key)
 }
 
-func (c *Context) SetStatusCode(statusCode int) {
-	c.StatusCode = statusCode
-	c.Writer.WriteHeader(statusCode)
+func (c *context) SetParam(key, value string) {
+	c.params[key] = value
 }
 
-func (c *Context) String(code int, value string) {
+func (c *context) Param(key string) string {
+	value, _ := c.params[key]
+	return value
+}
+
+func (c *context) PostForm(key string) string {
+	return c.req.FormValue(key)
+}
+
+func (c *context) SetStatusCode(statusCode int) {
+	c.writer.WriteHeader(statusCode)
+}
+
+func (c *context) SetHeader(key string, value string) {
+	c.writer.Header().Set(key, value)
+}
+
+func (c *context) Data(code int, data []byte) {
 	c.SetStatusCode(code)
-	c.SetHeader("Content-Type", "text/plain")
-	_, _ = c.Writer.Write([]byte(value))
+	_, _ = c.writer.Write(data)
 }
 
-func (c *Context) JSON(code int, obj interface{}) {
+func (c *context) JSON(code int, obj interface{}) {
 	c.SetStatusCode(code)
 	c.SetHeader("Content-Type", "application/json")
-	encoder := json.NewEncoder(c.Writer)
-	if err := encoder.Encode(obj); err != nil {
+
+	jsonBytes, err := json.Marshal(obj)
+	if err != nil {
 		panic(err)
 	}
-}
-
-func (c *Context) HTML(code int, html string) {
-	c.SetStatusCode(code)
-	c.SetHeader("Content-Type", "text/html")
-	_, _ = c.Writer.Write([]byte(html))
-}
-
-func (c *Context) Data(code int, data []byte) {
-	c.SetStatusCode(code)
-	_, _ = c.Writer.Write(data)
+	if _, err = c.writer.Write(jsonBytes); err != nil {
+		panic(err)
+	}
 }
