@@ -1,56 +1,47 @@
 package pbw
 
-import (
-	"strings"
+import "strings"
+
+var (
+	strColon = ":"
+	strStar  = "*"
 )
 
-type Node interface {
-	Insert(parts []string)
-	Search(reqPath string) string
-}
-
 type node struct {
-	pattern string
-	isWild  bool
-	next    map[string]*node // map[part]*node
+	isWild bool
+	next   map[string]*node
+
+	patterns []string
 }
 
-func NewNode() Node {
-	return &node{next: make(map[string]*node)}
-}
-
-func (n *node) Insert(parts []string) {
-	if len(parts) == 0 {
-		return
+func newNode(part string) *node {
+	return &node{
+		isWild:   strings.HasPrefix(part, strColon) || strings.HasPrefix(part, strStar),
+		next:     make(map[string]*node),
+		patterns: make([]string, 0),
 	}
+}
 
+func (n *node) insert(patterns []string) {
 	curr := n
-	for _, part := range parts {
+	for _, part := range patterns {
 		if _, ok := curr.next[part]; !ok {
-			curr.next[part] = &node{
-				next:   make(map[string]*node),
-				isWild: strings.HasPrefix(part, ":") || strings.HasPrefix(part, "*"),
-			}
+			curr.next[part] = newNode(part)
 		}
 		curr = curr.next[part]
 	}
-	curr.pattern = strings.Join(parts, "/")
+	curr.patterns = patterns
 }
 
-// Search for route in node, return pattern
-func (n *node) Search(reqPath string) string {
-	return search(n, strings.Split(reqPath, "/")[1:], 0)
-}
-
-func search(n *node, reqParts []string, index int) string {
+func (n *node) search(reqParts []string, index int) []string {
 	if len(reqParts) == index {
-		return n.pattern
+		return n.patterns
 	}
 
 	for part, next := range n.next {
-		if reqParts[index] == part || next.isWild {
-			return search(next, reqParts, index+1)
+		if next.isWild || reqParts[index] == part {
+			return next.search(reqParts, index+1)
 		}
 	}
-	return ""
+	return make([]string, 0)
 }

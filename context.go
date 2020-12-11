@@ -18,6 +18,8 @@ type Context interface {
 	SetHeader(key string, value string)
 	Data(code int, data []byte)
 	JSON(code int, obj interface{})
+	AddHandlers(handlers ...HandlerFunc)
+	Next()
 }
 
 type context struct {
@@ -26,13 +28,19 @@ type context struct {
 
 	// request uri params
 	params map[string]string
+
+	// middleware、handler callback
+	index    int
+	handlers []HandlerFunc
 }
 
-func NewContext(w http.ResponseWriter, req *http.Request) Context {
+func NewContext(w http.ResponseWriter, req *http.Request, hfs ...HandlerFunc) Context {
 	return &context{
-		writer: w,
-		req:    req,
-		params: make(map[string]string),
+		writer:   w,
+		req:      req,
+		params:   make(map[string]string),
+		handlers: hfs,
+		index:    -1,
 	}
 }
 
@@ -84,5 +92,17 @@ func (c *context) JSON(code int, obj interface{}) {
 	}
 	if _, err = c.writer.Write(jsonBytes); err != nil {
 		panic(err)
+	}
+}
+
+func (c *context) AddHandlers(handlers ...HandlerFunc) {
+	c.handlers = append(c.handlers, handlers...)
+}
+
+func (c *context) Next() {
+	c.index++
+	s := len(c.handlers)
+	for ; c.index < s; c.index++ {
+		c.handlers[c.index](c)
 	}
 }

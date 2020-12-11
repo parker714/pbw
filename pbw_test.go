@@ -6,11 +6,20 @@ import (
 	"testing"
 )
 
-func TestEngine_Run(t *testing.T) {
+func TestEngine_UseGroup(t *testing.T) {
 	engine := New()
-	err := engine.Run("80000")
-	if err == nil {
-		t.Fatalf("expect nil, got %s", err)
+	engine.GET("/user", func(c Context) {
+		c.Data(http.StatusOK, []byte(c.Param("name")))
+	})
+	engine.Use(func(c Context) {
+		c.SetParam("name", "pb")
+	})
+	response := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodGet, "/user", nil)
+	engine.ServeHTTP(response, request)
+
+	if "pb" != response.Body.String() {
+		t.Fatalf("expect %s, got %s", "pb", response.Body.String())
 	}
 }
 
@@ -39,6 +48,14 @@ func TestEngine_POST(t *testing.T) {
 
 	if "pb" != response.Body.String() {
 		t.Fatalf("expect %s, got %s", "pb", response.Body.String())
+	}
+}
+
+func TestEngine_Run(t *testing.T) {
+	engine := New()
+	err := engine.Run("80000")
+	if err == nil {
+		t.Fatalf("expect nil, got %s", err)
 	}
 }
 

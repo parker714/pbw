@@ -1,49 +1,55 @@
 package pbw
 
-import "testing"
+import (
+	"reflect"
+	"strings"
+	"testing"
+)
 
-func mockNode() Node {
-	node := NewNode()
+func TestTrie_insert(t *testing.T) {
+	n := newNode("")
+	n.insert([]string{"/", "user"})
+	n.insert([]string{"/", "sku"})
 
-	parts := [][]string{
-		{},
-		{"welcome"},
-		{"user", ":name"},
-		{"user", ":name", "*action"},
+	except := &node{
+		isWild: strings.HasPrefix("", strColon) || strings.HasPrefix("", strStar),
+		next: map[string]*node{
+			"/": {
+				next: map[string]*node{
+					"user": {
+						next:     make(map[string]*node),
+						patterns: []string{"/", "user"},
+					},
+					"sku": {
+						next:     make(map[string]*node),
+						patterns: []string{"/", "sku"},
+					},
+				},
+				patterns: make([]string, 0),
+			},
+		},
+		patterns: make([]string, 0),
 	}
-	for _, v := range parts {
-		node.Insert(v)
+
+	if !reflect.DeepEqual(except, n) {
+		t.Fatalf("except %v, got %v", except, n)
 	}
-	return node
 }
 
-func TestNode_Search(t *testing.T) {
-	node := mockNode()
+func TestTrie_search(t *testing.T) {
+	n := newNode("")
+	n.insert([]string{"/", "user"})
+	n.insert([]string{"/", ":lang", "doc"})
 
-	cases := []struct {
-		input  string
-		expect string
-	}{
-		{
-			"/welcome",
-			"welcome",
-		},
-		{
-			"/user/pb",
-			"user/:name",
-		},
-		{
-			"/user/pb/say",
-			"user/:name/*action",
-		},
-		{
-			"/book/pb",
-			"",
-		},
+	except := []string{"/", ":lang", "doc"}
+	got := n.search([]string{"/", "go", "doc"}, 0)
+	if !reflect.DeepEqual(except, got) {
+		t.Fatalf("except %v, got %v", except, got)
 	}
-	for _, c := range cases {
-		if pattern := node.Search(c.input); c.expect != pattern {
-			t.Fatalf("expect %s, got %s, input %s", c.expect, pattern, c.input)
-		}
+
+	except = []string{}
+	got = n.search([]string{"/", "go", "doc1"}, 0)
+	if !reflect.DeepEqual(except, got) {
+		t.Fatalf("except %v, got %v", except, got)
 	}
 }

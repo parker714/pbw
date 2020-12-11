@@ -5,73 +5,72 @@ import (
 	"strings"
 )
 
-const NotFound = "404 NOT FOUND"
-
-type Router interface {
-	AddRouter(method string, pattern string, handler HandlerFunc)
-	Handle(c Context)
-}
+const (
+	patternPrefixErr = "router: addPattern pattern must begin with /"
+	httpNotFound     = "router: 404 NotFound"
+)
 
 type router struct {
-	roots    map[string]Node
+	roots    map[string]*node
 	handlers map[string]HandlerFunc
 }
 
-func NewRouter() Router {
+func newRouter() *router {
 	return &router{
-		roots: map[string]Node{
-			http.MethodGet:  NewNode(),
-			http.MethodPost: NewNode(),
-		},
+		roots:    make(map[string]*node),
 		handlers: make(map[string]HandlerFunc),
 	}
 }
 
-func (r *router) AddRouter(method string, pattern string, handler HandlerFunc) {
-	parts := r.parsePattern(pattern)
-	r.roots[method].Insert(parts)
+func (r *router) addPattern(method string, pattern string, handler HandlerFunc) {
+	if !strings.HasPrefix(pattern, "/") {
+		panic(patternPrefixErr)
+	}
 
-	key := method + "-" + strings.Join(parts, "/")
-	r.handlers[key] = handler
+	if _, ok := r.roots[method]; !ok {
+		r.roots[method] = newNode("")
+	}
+
+	patterns := r.parsePattern(pattern)
+	r.roots[method].insert(patterns)
+
+	r.handlers[method+"-"+strings.Join(patterns, "/")] = handler
 }
 
-// parsePattern used to resolve registered routes
-// /welcome            -> welcome
-// /user/:name         -> user/:name
-// /user/:name/*action -> user/:name/*action
 func (r *router) parsePattern(pattern string) []string {
 	patterns := strings.Split(pattern, "/")
 
 	parts := make([]string, 0)
-	for _, item := range patterns {
-		if item == "" {
-			continue
-		}
-		parts = append(parts, item)
-		if strings.HasPrefix(item, "*") {
+	for _, pattern := range patterns {
+		parts = append(parts, pattern)
+		if strings.HasPrefix(pattern, "*") {
 			break
 		}
 	}
 	return parts
 }
 
-func (r *router) Handle(c Context) {
-	root, ok := r.roots[c.Method()]
-	if !ok {
-		c.Data(http.StatusNotFound, []byte(NotFound))
-		return
+func (r *router) getPattern(method string, requestPath string) (patterns []string) {
+	if _, ok := r.roots[method]; !ok {
+		return make([]string, 0)
 	}
 
-	pattern := root.Search(c.Path())
-	if pattern == "" {
-		c.Data(http.StatusNotFound, []byte(NotFound))
+	return r.roots[method].search(strings.Split(requestPath, "/"), 0)
+}
+
+func (r *router) handle(c Context) {
+	patterns := r.getPattern(c.Method(), c.Path())
+	if 0 == len(patterns) {
+		c.Data(http.StatusNotFound, []byte(httpNotFound))
 		return
 	}
 
 	// add context params
-	patternParts := strings.Split(pattern, "/")
-	requestParts := strings.Split(c.Path(), "/")[1:]
-	for index, part := range patternParts {
+	requestParts := strings.Split(c.Path(), "/")
+	for index, part := range patterns {
+		if "" == part {
+			continue
+		}
 		if part[0] == ':' {
 			c.SetParam(part[1:], requestParts[index])
 		}
@@ -82,6 +81,9 @@ func (r *router) Handle(c Context) {
 	}
 
 	// router handler
-	key := c.Method() + "-" + pattern
-	r.handlers[key](c)
+	key := c.Method() + "-" + strings.Join(patterns, "/")
+	c.AddHandlers(r.handlers[key])
+
+	// next handler
+	c.Next()
 }
