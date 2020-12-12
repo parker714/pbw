@@ -5,8 +5,11 @@ import (
 	"net/http"
 )
 
+// H http header params.
 type H map[string]interface{}
 
+// Context used to pass variables between middleware,
+// manage the flow, validate the JSON of a request and render a JSON response.
 type Context interface {
 	Method() string
 	Path() string
@@ -34,6 +37,7 @@ type context struct {
 	handlers []HandlerFunc
 }
 
+// NewContext used return context.
 func NewContext(w http.ResponseWriter, req *http.Request, hfs ...HandlerFunc) Context {
 	return &context{
 		writer:   w,

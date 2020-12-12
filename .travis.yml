@@ -18,8 +18,8 @@ install:
   - cd $GOPATH/src/github.com/parker714/pbw
 
 script:
-  - goveralls -coverprofile=overalls.coverprofile -service=travis-ci -repotoken $COVERALLS_TOKEN
   - overalls -project=github.com/parker714/pbw -covermode=count -ignore='.git,_vendor'
+  - goveralls -coverprofile=overalls.coverprofile -service=travis-ci -repotoken $COVERALLS_TOKEN
   - go test -race -coverprofile=coverage.txt -covermode=atomic
   - go test ./...
 

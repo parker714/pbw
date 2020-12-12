@@ -5,8 +5,10 @@ import (
 	"strings"
 )
 
+// HandlerFunc router handle function.
 type HandlerFunc func(Context)
 
+// Engine includes Use、Group、GET...
 type Engine interface {
 	Use(middleware ...HandlerFunc)
 	Group(prefix string) RouterGroup
@@ -21,6 +23,7 @@ type engine struct {
 	router *router
 }
 
+// New used Engine.
 func New() Engine {
 	return &engine{
 		router: newRouter(),
