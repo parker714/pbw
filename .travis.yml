@@ -1,0 +1,32 @@
+language: go
+sudo: false
+
+notifications:
+  email:
+    recipients:
+      - parker714@foxmail.com
+  on_success: change
+  on_failure: always
+
+go:
+  - 1.12.x
+
+install:
+  - go get github.com/go-playground/overalls
+  - go get github.com/mattn/goveralls
+  - go get github.com/smartystreets/goconvey
+  - mkdir -p $GOPATH/src/github.com/parker714
+  - cd $GOPATH/src/github.com/parker714/rabbit
+
+script:
+  - overalls -project=github.com/parker714/rabbit -covermode=count -ignore='.git,_vendor'
+  - goveralls -coverprofile=overalls.coverprofile -service=travis-ci -repotoken $COVERALLS_TOKEN
+  - go test -race -coverprofile=coverage.txt -covermode=atomic
+  - go test ./...
+
+after_success:
+  - bash <(curl -s https://codecov.io/bash)
+
+env:
+  global:
+    secure: "KKpk08/++i1AXhzqyvuJYNRfGLciPApZfq7LhVnlUzkgcSzaANCj1czG/IWt+qv2UkuBEnvijBE0YgoOB2eY/iZ5UiYu7k4cMtFrwnIEeFNDcm+3KfDjliY8gG3zksRdwTTP1abgHqNvEyX804Axa0XG7RSKbQhPqMC5t8Ker1cRTSYI9pF2cUC1JkHVVU4ORX5Bh8vlI9s5kSSnFD8fNLxR8Vdn/i3OgeZDorQWUpnO52+8nnO71005A3dxew2ZGJvtqdVFv4L3nUmtEWQ4rm4LQJ+gs/sUEqq4VKFNScafogPivVnZFS8S5IWB7mU+qjcAYeroySbRGzF7Uqj1TSDMllu1Gg8F21l1rEAcJGhReQHkAt+iIBeobNMS9OWtVzRbApuS/5eQ8yjzsPDzwcvqRpK2BpSjfa6D0r8NXIRS7F4Ecep8n/romSbbWeWOQ3dOvhNcJhrGGfqgMt4hKv1RjBzFSpYQt+gwQBq1+FFiNJackN4/mXAleNaq8rMOWgE5BDaI/YlOZdv1xeeBUS2GOHQ7xKwp46dUYXM1+5s2htYifam7dvJDco/Jg0Qu7qrOE5cXW1+FmCG2acWQUlZEllvXI/2lVAhBvSk9YTzToio1uP1Li8v2lik/XMp8FDjhAwc3gJm0fLnm+zYK8fTxGca7XuWSAwlOfKZ7Dx8="
