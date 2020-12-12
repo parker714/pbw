@@ -10,6 +10,7 @@ import (
 
 var internalServerErr = "Internal Server Error"
 
+// Recovery middleware used error recover.
 func Recovery() HandlerFunc {
 	return func(c Context) {
 		defer func() {

@@ -1,5 +1,6 @@
 package pbw
 
+// RouterGroup used route group.
 type RouterGroup interface {
 	GET(pattern string, handler HandlerFunc)
 	POST(pattern string, handler HandlerFunc)

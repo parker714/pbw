@@ -1,6 +1,10 @@
 # pbw
 pbw is a HTTP web framework written in Go (Golang). 
 
+[![Build Status](https://travis-ci.org/parker714/pbw.svg?branch=master)](https://travis-ci.org/parker714/pbw)
+[![Coverage Status](https://coveralls.io/repos/github/parker714/pbw/badge.svg?branch=master)](https://coveralls.io/github/parker714/pbw?branch=master)
+[![Go Report Card](https://goreportcard.com/badge/github.com/parker714/pbw)](https://goreportcard.com/report/github.com/parker714/pbw)
+[![Release](https://img.shields.io/github/release/parker714/pbw.svg?label=Release)](https://github.com/parker714/pbw/releases)
 [![GitHub license](https://img.shields.io/github/license/parker714/pbw)](https://github.com/parker714/pbw/blob/main/LICENSE)
 
 ## Supported Go versions
